@@ -1,5 +1,5 @@
 /*
- * ESP32 Buzzer and Magenetic Door Switch
+ * ESP32 based Buzzer and Magenetic Door Switch
 */
 
 #include <WiFi.h>

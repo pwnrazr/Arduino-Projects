@@ -27,7 +27,7 @@ TimerHandle_t wifiReconnectTimer;
 unsigned long previousMillis1 = 0;
 unsigned long previousMillis2 = 0;
 
-const long interval1 = 50; // Beep timer
+const long interval1 = 100; // Beep timer
 const long interval2 = 250; // Door switch polling
 
 unsigned int beep = 0;
@@ -211,7 +211,7 @@ void loop()
     {
       Serial.println("Beep!");
       Serial.println(beep);
-      ledcWriteTone(0,3000);
+      ledcWriteTone(0,5000);
       beeping = true;
     }
     else if(beep != 0 && beeping == true)

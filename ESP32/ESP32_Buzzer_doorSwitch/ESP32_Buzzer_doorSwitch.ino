@@ -2,6 +2,7 @@
  * ESP32 - Buzzer and Magenetic Door Switch
 */
 
+#include "led.h"
 #include <WiFi.h>
 extern "C" {
 	#include "freertos/FreeRTOS.h"
@@ -142,6 +143,8 @@ void setup() {
   ledcSetup(0,1E5,12);  // Setup for buzzer
   ledcAttachPin(33,0);  // Pin 33 is connected to Gate of mosfet controlling buzzer
   
+  ledsetup();
+  
   mqttReconnectTimer = xTimerCreate("mqttTimer", pdMS_TO_TICKS(2000), pdFALSE, (void*)0, reinterpret_cast<TimerCallbackFunction_t>(connectToMqtt));
   wifiReconnectTimer = xTimerCreate("wifiTimer", pdMS_TO_TICKS(2000), pdFALSE, (void*)0, reinterpret_cast<TimerCallbackFunction_t>(connectToWifi));
 
@@ -198,6 +201,8 @@ void setup() {
 
 void loop() 
 {
+  ledloop();
+  
   ArduinoOTA.handle();
   
   unsigned long currentMillis = millis();
@@ -237,13 +242,13 @@ void loop()
       {
         Serial.println("DoorState LOW");
         mqttClient.publish("esp32/doorState", 0, true, "0");
-        beep = 1;
+        //beep = 1;
       }
       else 
       {
         Serial.println("DoorState HIGH");
         mqttClient.publish("esp32/doorState", 0, true, "1");
-        beep = 2;
+        //beep = 2;
       }
   }
     lastdoorState = doorState;

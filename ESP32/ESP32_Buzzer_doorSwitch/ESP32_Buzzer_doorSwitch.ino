@@ -71,7 +71,7 @@ void onMqttConnect(bool sessionPresent) {
 
   mqttClient.subscribe("esp32/beepamount", 2);
   mqttClient.subscribe("esp32/forcestopbeep", 2);
-  mqttClient.subscribe("esp32/warnbeep", 2);
+  mqttClient.subscribe("esp32/led", 2);
 }
 
 void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
@@ -124,6 +124,17 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
     ledcWriteTone(0,0);
     beeping = false;
     Serial.println("Beep force stopped");
+  }
+  else if(topicstr == "esp32/led")
+  {
+    if(payloadstr == "1")
+    {
+       FastLED.setBrightness(BRIGHTNESS);
+    }
+    else if(payloadstr == "0")
+    {
+       FastLED.setBrightness(0);
+    }
   }
 }
 

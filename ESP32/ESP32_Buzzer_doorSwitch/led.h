@@ -21,7 +21,7 @@ FASTLED_USING_NAMESPACE
 #define NUM_LEDS    45
 CRGB leds[NUM_LEDS];
 
-#define BRIGHTNESS          127
+#define BRIGHTNESS          255
 #define FRAMES_PER_SECOND  60
 
 // -- The core to run FastLED.show()
@@ -81,18 +81,19 @@ void ledsetup() {
   // set master brightness control
   FastLED.setBrightness(BRIGHTNESS);
 
-    int core = xPortGetCoreID();
-    Serial.print("Main code running on core ");
-    Serial.println(core);
+  int core = xPortGetCoreID();
+  Serial.print("Main code running on core ");
+  Serial.println(core);
 
-    // -- Create the FastLED show task
-    xTaskCreatePinnedToCore(FastLEDshowTask, "FastLEDshowTask", 2048, NULL, 2, &FastLEDshowTaskHandle, FASTLED_SHOW_CORE);
-
+  // -- Create the FastLED show task
+  xTaskCreatePinnedToCore(FastLEDshowTask, "FastLEDshowTask", 2048, NULL, 2, &FastLEDshowTaskHandle, FASTLED_SHOW_CORE);
+  
   for(int i = 0; i < NUM_LEDS; i++)
   {
     leds[i].setRGB(128, 0, 128);
   }
   FastLEDshowESP32();
+  FastLED.setBrightness(0);
 }
 
 void ledloop()

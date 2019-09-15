@@ -1,5 +1,5 @@
 /*
- * ESP32 based Buzzer and Magenetic Door Switch
+ * ESP32 - Buzzer and Magenetic Door Switch
 */
 
 #include <WiFi.h>
@@ -27,8 +27,8 @@ TimerHandle_t wifiReconnectTimer;
 unsigned long previousMillis1 = 0;
 unsigned long previousMillis2 = 0;
 
-const long interval1 = 25; // Beep timer
-const long interval2 = 200; // Door switch polling
+const long interval1 = 50; // Beep timer
+const long interval2 = 250; // Door switch polling
 
 unsigned int beep = 0;
 bool beeping = false;
@@ -137,10 +137,10 @@ void setup() {
   Serial.println();
   Serial.println();
 
-  pinMode(32, INPUT_PULLUP);
+  pinMode(32, INPUT_PULLUP);  // Set pin 32 where door switch is connected to as Input and pulled-up with internal resistors
 
-  ledcSetup(0,1E5,12);
-  ledcAttachPin(33,0);
+  ledcSetup(0,1E5,12);  // Setup for buzzer
+  ledcAttachPin(33,0);  // Pin 33 is connected to Gate of mosfet controlling buzzer
   
   mqttReconnectTimer = xTimerCreate("mqttTimer", pdMS_TO_TICKS(2000), pdFALSE, (void*)0, reinterpret_cast<TimerCallbackFunction_t>(connectToMqtt));
   wifiReconnectTimer = xTimerCreate("wifiTimer", pdMS_TO_TICKS(2000), pdFALSE, (void*)0, reinterpret_cast<TimerCallbackFunction_t>(connectToWifi));
@@ -166,10 +166,6 @@ void setup() {
 
   // No authentication by default
   ArduinoOTA.setPassword("pwnrazr123");
-
-  // Password can be set with it's md5 value as well
-  // MD5(admin) = 21232f297a57a5a743894a0e4a801fc3
-  // ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
 
   ArduinoOTA
     .onStart([]() {
@@ -242,8 +238,6 @@ void loop()
         Serial.println("DoorState LOW");
         mqttClient.publish("esp32/doorState", 0, true, "0");
         beep = 1;
-        //ledcWriteTone(0,0);
-        //beeping = false;
       }
       else 
       {

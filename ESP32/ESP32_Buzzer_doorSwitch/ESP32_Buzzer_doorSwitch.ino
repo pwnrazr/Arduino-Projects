@@ -34,8 +34,8 @@ const long interval2 = 250; // Door switch polling
 unsigned int beep = 0;
 bool beeping = false;
 
-int doorState = 0;         // current state of the button
-int lastdoorState = 0;     // previous state of the button
+int doorState = 1;         // current state of the button
+int lastdoorState = 1;     // previous state of the button
 
 void connectToWifi() {
   Serial.println("Connecting to Wi-Fi...");

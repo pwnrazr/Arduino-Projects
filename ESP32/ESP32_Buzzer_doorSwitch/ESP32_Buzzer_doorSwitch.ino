@@ -145,7 +145,7 @@ void onMqttPublish(uint16_t packetId) {
 }
 
 void setup() {
-  Serial.begin(115200);
+  //Serial.begin(115200); //uncomment to enable debugging
   Serial.println();
   Serial.println();
 

@@ -90,7 +90,7 @@ void ledsetup() {
   
   for(int i = 0; i < NUM_LEDS; i++)
   {
-    leds[i].setRGB(128, 0, 128);
+    leds[i].setRGB(255, 0, 255);
   }
   FastLEDshowESP32();
   FastLED.setBrightness(0);

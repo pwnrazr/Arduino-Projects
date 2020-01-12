@@ -16,7 +16,7 @@ extern "C" {
 #define WIFI_SSID "Ayam Goreng"
 #define WIFI_PASSWORD "pwnrazr1234"
 
-#define MQTT_HOST IPAddress(192, 168, 1, 247)
+#define MQTT_HOST IPAddress(192, 168, 1, 184)
 #define MQTT_PORT 1883
 #define MQTT_USER "pwnrazr"
 #define MQTT_PASS "pwnrazr123"

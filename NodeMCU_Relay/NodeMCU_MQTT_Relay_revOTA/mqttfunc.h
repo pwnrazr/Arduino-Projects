@@ -4,7 +4,7 @@
 WiFiClient espClient;
 PubSubClient client(espClient);
 
-const char* mqtt_server = "192.168.1.247";
+const char* mqtt_server = "192.168.1.184";
 const char* mqtt_username = "pwnrazr";
 const char* mqtt_password = "pwnrazr123";
 

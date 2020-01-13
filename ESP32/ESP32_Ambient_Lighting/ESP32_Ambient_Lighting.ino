@@ -1,10 +1,14 @@
+/*
+ * ESP32 - Buzzer, Magenetic Door Switch and Room Ambient Lighting
+*/
+
+#include "led.h"
 #include <WiFi.h>
 extern "C" {
-  #include "freertos/FreeRTOS.h"
-  #include "freertos/timers.h"
+	#include "freertos/FreeRTOS.h"
+	#include "freertos/timers.h"
 }
 #include <AsyncMqttClient.h>
-
 #include <ESPmDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
@@ -12,22 +16,26 @@ extern "C" {
 #define WIFI_SSID "Ayam Goreng"
 #define WIFI_PASSWORD "pwnrazr1234"
 
-#define MQTT_HOST IPAddress(192, 168, 1, 247)
+#define MQTT_HOST IPAddress(192, 168, 1, 184)
 #define MQTT_PORT 1883
+#define MQTT_USER "pwnrazr"
+#define MQTT_PASS "pwnrazr123"
 
 AsyncMqttClient mqttClient;
 TimerHandle_t mqttReconnectTimer;
 TimerHandle_t wifiReconnectTimer;
 
-int curMode = 2;
+unsigned long previousMillis1 = 0;
+unsigned long previousMillis2 = 0;
 
-unsigned int brightness = 255;
+const long interval1 = 100; // Beep timer
+const long interval2 = 250; // Door switch polling
 
-unsigned int ledR = 128;
-unsigned int ledG = 128;
-unsigned int ledB = 128;
+unsigned int beep = 0;
+bool beeping = false;
 
-bool rgbReady = false;
+int doorState = 1;         // current state of the button
+int lastdoorState = 1;     // previous state of the button
 
 void connectToWifi() {
   Serial.println("Connecting to Wi-Fi...");
@@ -36,7 +44,6 @@ void connectToWifi() {
 
 void connectToMqtt() {
   Serial.println("Connecting to MQTT...");
-  mqttClient.setCredentials("pwnrazr", "pwnrazr123");
   mqttClient.connect();
 }
 
@@ -52,7 +59,7 @@ void WiFiEvent(WiFiEvent_t event) {
     case SYSTEM_EVENT_STA_DISCONNECTED:
         Serial.println("WiFi lost connection");
         xTimerStop(mqttReconnectTimer, 0); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
-    xTimerStart(wifiReconnectTimer, 0);
+		xTimerStart(wifiReconnectTimer, 0);
         break;
     }
 }
@@ -61,26 +68,10 @@ void onMqttConnect(bool sessionPresent) {
   Serial.println("Connected to MQTT.");
   Serial.print("Session present: ");
   Serial.println(sessionPresent);
-  
-  uint16_t packetIdSub = mqttClient.subscribe("esp32/test", 2);
-  uint16_t packetIdSub1 = mqttClient.subscribe("esp32/state", 2);
-  uint16_t packetIdSub2 = mqttClient.subscribe("esp32/brightness", 2);
 
-  uint16_t packetIdSub3 = mqttClient.subscribe("esp32/R", 2);
-  uint16_t packetIdSub4 = mqttClient.subscribe("esp32/G", 2);
-  uint16_t packetIdSub5 = mqttClient.subscribe("esp32/B", 2);
-  /*
-  uint16_t packetIdSub = mqttClient.subscribe("test/lol", 2);
-  Serial.print("Subscribing at QoS 2, packetId: ");
-  Serial.println(packetIdSub);
-  mqttClient.publish("test/lol", 0, true, "test 1");
-  Serial.println("Publishing at QoS 0");
-  uint16_t packetIdPub1 = mqttClient.publish("test/lol", 1, true, "test 2");
-  Serial.print("Publishing at QoS 1, packetId: ");
-  Serial.println(packetIdPub1);
-  uint16_t packetIdPub2 = mqttClient.publish("test/lol", 2, true, "test 3");
-  Serial.print("Publishing at QoS 2, packetId: ");
-  Serial.println(packetIdPub2); */
+  mqttClient.subscribe("esp32/beepamount", 2);
+  mqttClient.subscribe("esp32/forcestopbeep", 2);
+  mqttClient.subscribe("esp32/led", 2);
 }
 
 void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
@@ -106,23 +97,9 @@ void onMqttUnsubscribe(uint16_t packetId) {
 }
 
 void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
-  /*
   Serial.println("Publish received.");
   Serial.print("  topic: ");
   Serial.println(topic);
-  Serial.print("  qos: ");
-  Serial.println(properties.qos);
-  Serial.print("  dup: ");
-  Serial.println(properties.dup);
-  Serial.print("  retain: ");
-  Serial.println(properties.retain);
-  Serial.print("  len: ");
-  Serial.println(len);
-  Serial.print("  index: ");
-  Serial.println(index);
-  Serial.print("  total: ");
-  Serial.println(total);
-  */
 
   String topicstr;
   String payloadstr;
@@ -136,39 +113,28 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
   {
     topicstr = String(topicstr + (char)topic[i]);  //convert topic to string
   }
-  
-  if(topicstr == "esp32/test" && payloadstr == "test123")
+
+  if(topicstr == "esp32/beepamount")
   {
-    mqttClient.publish("esp32/testrep", 0, true, "test123 received");
+    beep = payloadstr.toInt();
   }
-
-  if(topicstr == "esp32/state")
+  else if(topicstr == "esp32/forcestopbeep")
   {
-    curMode = payloadstr.toInt();
-
-    if(curMode == 4)
+    beep = 0;
+    ledcWriteTone(0,0);
+    beeping = false;
+    Serial.println("Beep force stopped");
+  }
+  else if(topicstr == "esp32/led")
+  {
+    if(payloadstr == "1")
     {
-      rgbReady = true;
+       FastLED.setBrightness(BRIGHTNESS);
     }
-  }
-
-  if(topicstr == "esp32/brightness")
-  {
-    brightness = payloadstr.toInt();
-  }
-
-  if(topicstr == "esp32/R")
-  {
-    ledR = payloadstr.toInt();
-  }
-  if(topicstr == "esp32/G")
-  {
-    ledG = payloadstr.toInt();
-  }
-  if(topicstr == "esp32/B")
-  {
-    ledB = payloadstr.toInt();
-    rgbReady = true;
+    else if(payloadstr == "0")
+    {
+       FastLED.setBrightness(0);
+    }
   }
 }
 
@@ -178,22 +144,42 @@ void onMqttPublish(uint16_t packetId) {
   Serial.println(packetId);
 }
 
+void setup() {
+  //Serial.begin(115200); //uncomment to enable debugging
+  Serial.println();
+  Serial.println();
 
-void otaSetup()
-{
+  pinMode(32, INPUT_PULLUP);  // Set pin 32 where door switch is connected to as Input and pulled-up with internal resistors
+
+  ledcSetup(0,1E5,12);  // Setup for buzzer
+  ledcAttachPin(33,0);  // Pin 33 is connected to Gate of mosfet controlling buzzer
+  
+  ledsetup();
+  
+  mqttReconnectTimer = xTimerCreate("mqttTimer", pdMS_TO_TICKS(2000), pdFALSE, (void*)0, reinterpret_cast<TimerCallbackFunction_t>(connectToMqtt));
+  wifiReconnectTimer = xTimerCreate("wifiTimer", pdMS_TO_TICKS(2000), pdFALSE, (void*)0, reinterpret_cast<TimerCallbackFunction_t>(connectToWifi));
+
+  WiFi.onEvent(WiFiEvent);
+
+  mqttClient.onConnect(onMqttConnect);
+  mqttClient.onDisconnect(onMqttDisconnect);
+  mqttClient.onSubscribe(onMqttSubscribe);
+  mqttClient.onUnsubscribe(onMqttUnsubscribe);
+  mqttClient.onMessage(onMqttMessage);
+  mqttClient.onPublish(onMqttPublish);
+  mqttClient.setServer(MQTT_HOST, MQTT_PORT);
+  mqttClient.setCredentials(MQTT_USER, MQTT_PASS);
+  
+  connectToWifi();
 
   // Port defaults to 3232
   // ArduinoOTA.setPort(3232);
 
   // Hostname defaults to esp3232-[MAC]
-   ArduinoOTA.setHostname("ESP32");
+  ArduinoOTA.setHostname("ESP32");
 
   // No authentication by default
-   ArduinoOTA.setPassword("pwnrazr123");
-
-  // Password can be set with it's md5 value as well
-  // MD5(admin) = 21232f297a57a5a743894a0e4a801fc3
-  // ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
+  ArduinoOTA.setPassword("pwnrazr123");
 
   ArduinoOTA
     .onStart([]() {
@@ -222,8 +208,60 @@ void otaSetup()
     });
 
   ArduinoOTA.begin();
+}
 
-  Serial.println("Ready");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
+void loop() 
+{
+  ledloop();
+  
+  ArduinoOTA.handle();
+  
+  unsigned long currentMillis = millis();
+
+  // Beep function
+  if (currentMillis - previousMillis1 >= interval1) 
+  {
+    previousMillis1 = currentMillis;
+
+    if(beep > 0 && beeping == false)
+    {
+      Serial.println("Beep!");
+      Serial.println(beep);
+      ledcWriteTone(0,5000);
+      beeping = true;
+    }
+    else if(beep != 0 && beeping == true)
+    {
+      Serial.println("Off Beep");
+      Serial.println(beep);
+      ledcWriteTone(0,0);
+      beeping = false;
+      beep--;
+    }
+  }
+
+  // doorswitch polling
+  if (currentMillis - previousMillis2 >= interval2) 
+  {
+    previousMillis2 = currentMillis;
+
+    doorState = digitalRead(32);  //get current door state
+
+    if (doorState != lastdoorState) 
+    {
+      if (doorState == LOW) 
+      {
+        Serial.println("DoorState LOW");
+        mqttClient.publish("esp32/doorState", 0, true, "0");
+        //beep = 1;
+      }
+      else 
+      {
+        Serial.println("DoorState HIGH");
+        mqttClient.publish("esp32/doorState", 0, true, "1");
+        //beep = 2;
+      }
+  }
+    lastdoorState = doorState;
+  }
 }
